@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Statistics • CC RCA{% endblock %}
+
+
+
+{% block head_extra %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    .card {
+      border-radius: 10px;
+    }
+    canvas {
+      max-width: 100%;
+      height: auto !important;
+    }
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 600;
+    }
+  </style>
+{% endblock %}
+
+
+
+{% block content %}
+<h2 class="mb-4 text-center">Statistics Overview</h2>
+
+<div class="container" style="max-width: 1100px;">
+  <div class="row g-4 justify-content-center">
+
+    <div class="col-md-6 col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-header fw-semibold text-center bg-light">Issues by User (added_by)</div>
+        <div class="card-body">
+          <canvas id="userBar" height="280"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-header fw-semibold text-center bg-light">Issues by Category</div>
+        <div class="card-body">
+          <canvas id="categoryPie" height="280"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- Simple search to filter dashboard (redirects to /search) -->
+<div class="card mt-4">
+  <div class="card-header fw-semibold">Search / Filter</div>
+  <div class="card-body">
+    <form class="row g-2" method="get" action="{{ url_for('issues.search') }}">
+      <div class="col-sm-3">
+        <input class="form-control" name="added_by" placeholder="Added By">
+      </div>
+      <div class="col-sm-3">
+        <input class="form-control" name="category" placeholder="Category">
+      </div>
+      <div class="col-sm-3">
+        <select class="form-select" name="status">
+          <option value="">Status (any)</option>
+          <option>Open</option>
+          <option>In Progress</option>
+          <option>Closed</option>
+        </select>
+      </div>
+      <div class="col-sm-3 d-grid">
+        <button class="btn btn-dark" type="submit">Search on Dashboard</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+  // Prepare data from server (stats dict).
+  // stats.users and stats.categories are Python Counter-like; convert to arrays.
+  const userLabels = {{ stats.users.keys()|list|tojson }};
+  const userValues = {{ stats.users.values()|list|tojson }};
+
+  const catLabels = {{ stats.categories.keys()|list|tojson }};
+  const catValues = {{ stats.categories.values()|list|tojson }};
+
+  // Bar: Issues by User
+  new Chart(document.getElementById('userBar'), {
+    type: 'bar',
+    data: {
+      labels: userLabels,
+      datasets: [{
+        label: 'Issues',
+        data: userValues
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: true }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0 } }
+      }
+    }
+  });
+
+  // Pie: Issues by Category
+  new Chart(document.getElementById('categoryPie'), {
+    type: 'pie',
+    data: {
+      labels: catLabels,
+      datasets: [{
+        data: catValues
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Dashboard • CC RCA{% endblock %}
+
+{% block head_extra %}
+<style>
+  /* Make the dashboard table full width */
+  #issuesTable th:nth-child(1), #issuesTable td:nth-child(1) {
+    table-layout: auto !important;  /* let browser auto-size based on content */
+    width: 90%;
+    font-size: 0.92rem;
+    white-space: nowrap !important;
+    min-width: 120px;
+    text-align: left;
+  }
+
+  /* Allow text-heavy cells to wrap */
+  #issuesTable td {
+    white-space: normal !important;
+    word-wrap: break-word;
+    vertical-align: top;
+  }
+
+  /* Set relative minimum widths */
+  #issuesTable th:nth-child(2), #issuesTable td:nth-child(2) { min-width: 250px; } /* Issue Description */
+  #issuesTable th:nth-child(3), #issuesTable td:nth-child(3) { min-width: 220px; } /* Solution */
+  #issuesTable th:nth-child(4), #issuesTable td:nth-child(4) { min-width: 280px; } /* Root Cause Analysis */
+  #issuesTable th:nth-child(5), #issuesTable td:nth-child(5) { min-width: 150px; } /* Activity Type */
+  #issuesTable th:nth-child(6), #issuesTable td:nth-child(6) { min-width: 150px; } /* Category */
+  #issuesTable th:nth-child(7), #issuesTable td:nth-child(7) { min-width: 220px; } /* Action Items */
+  #issuesTable th:nth-child(8), #issuesTable td:nth-child(8) { min-width: 100px; text-align: center; } /* Status */
+  #issuesTable th:nth-child(9), #issuesTable td:nth-child(9) { min-width: 150px; } /* added_by */
+  #issuesTable th:nth-child(10), #issuesTable td:nth-child(10) { min-width: 140px; text-align: center; } /* Actions */
+
+  #issuesTable thead th {
+    background: linear-gradient(90deg, #004080, #0073e6);
+    color: #ffffff;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: middle;
+    border-bottom: 2px solid #003366;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  /* Hover effect for rows */
+  #issuesTable tbody tr:hover {
+    background-color: #f2f7ff !important;
+    transition: background-color 0.2s ease;
+  }
+
+  /* Optional footer matching header style */
+  #issuesTable tfoot th {
+    background-color: #e8f0ff;
+    font-weight: 600;
+  }
+
+
+
+
+
+
+
+</style>
+{% endblock %}
+
+
+
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h2 class="mb-0">RCA & Corrective Action Dashboard</h2>
+  <div class="d-flex gap-2">
+    <a class="btn btn-primary" href="{{ url_for('issues.add_issue') }}">+ Add New Issue</a>
+    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advancedSearch">
+      Advanced Search
+    </button>
+  </div>
+</div>
+
+<!-- Quick search -->
+<form class="row g-2 mb-3" method="get" action="{{ url_for('issues.search') }}">
+  <div class="col-sm-3">
+    <input type="text" name="added_by" class="form-control" placeholder="Added By (email or name)" value="{{ request.args.get('added_by','') }}">
+  </div>
+  <div class="col-sm-3">
+    <input type="text" name="category" class="form-control" placeholder="Category" value="{{ request.args.get('category','') }}">
+  </div>
+  <div class="col-sm-3">
+    <select class="form-select" name="status">
+      <option value="">Status (any)</option>
+      {% for s in ['Open','In Progress','Closed'] %}
+      <option value="{{s}}" {% if request.args.get('status')==s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-sm-3 d-grid">
+    <button class="btn btn-dark" type="submit">Search</button>
+  </div>
+</form>
+
+<!-- Advanced search -->
+<div id="advancedSearch" class="collapse mb-4">
+  <div class="card card-body">
+    <form method="get" action="{{ url_for('issues.search') }}">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Issue Date (From)</label>
+          <input type="date" class="form-control" name="issue_date_from" value="{{ request.args.get('issue_date_from','') }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Issue Date (To)</label>
+          <input type="date" class="form-control" name="issue_date_to" value="{{ request.args.get('issue_date_to','') }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Activity Type</label>
+          <input type="text" class="form-control" name="activity_type" placeholder="Build / Test / Deploy..." value="{{ request.args.get('activity_type','') }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Keyword (in description/solution)</label>
+          <input type="text" class="form-control" name="q" placeholder="Keyword…" value="{{ request.args.get('q','') }}">
+        </div>
+      </div>
+      <div class="mt-3">
+        <button class="btn btn-primary">Apply Filters</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('issues.dashboard') }}">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="table-responsive" style="max-width: 100%;">
+       <table id="issuesTable" class="table table-striped table-hover align-middle table-bordered w-100">
+
+        <thead>
+          <tr>
+            <th>Issue Date</th>
+            <th>Issue Description</th>
+            <th>Solution</th>
+            <th>Root Cause Analysis</th>
+            <th>Activity Types</th>
+            <th>Issue Category</th>
+            <th>Action Items</th>
+            <th>Status</th>
+            <th>added_by</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for issue in issues %}
+          <tr>
+            <td>{{ issue.issue_date.strftime('%b %d, %Y') if issue.issue_date else '' }}</td>
+
+            <td style="min-width: 240px;">{{ issue.issue_description }}</td>
+            <td>{{ issue.solution }}</td>
+            <td>{{ issue.root_cause }}</td>
+            <td>{{ issue.activity_type }}</td>
+            <td>{{ issue.category }}</td>
+            <td>{{ issue.action_items }}</td>
+            <td>
+              <span class="badge {% if issue.status=='Closed' %}bg-success{% elif issue.status=='In Progress' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                {{ issue.status }}
+              </span>
+            </td>
+            <td>{{ issue.added_by }}</td>
+            <td>
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="{{ url_for('issues.edit_issue', issue_id=issue.id) }}" class="btn btn-outline-primary">Edit</a>
+                    <a href="{{ url_for('issues.delete_issue', issue_id=issue.id) }}"
+                    class="btn btn-outline-danger"
+                    onclick="return confirm('Delete issue #{{ issue.id }}?');">Delete</a>
+                </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th>Issue Date</th>
+            <th>Issue Description</th>
+            <th>Solution</th>
+            <th>Root Cause Analysis</th>
+            <th>Activity Types</th>
+            <th>Issue Category</th>
+            <th>Action Items</th>
+            <th>Status</th>
+            <th>added_by</th>
+            <th>Actions</th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+  // Initialize DataTable if table exists
+  $(function () {
+    if ($('#issuesTable').length) {
+      $('#issuesTable').DataTable({
+  pageLength: 20,
+  autoWidth: false,  // Disable fixed column width calculation
+  scrollX: true,     // Enable horizontal scrolling if needed
+  columnDefs: [
+    { width: '8%', targets: 0 },   // Issue Date
+    { width: '20%', targets: 1 },  // Issue Description
+    { width: '18%', targets: 2 },  // Solution
+    { width: '22%', targets: 3 },  // Root Cause
+    { width: '10%', targets: 4 },  // Activity
+    { width: '10%', targets: 5 },  // Category
+    { width: '18%', targets: 6 },  // Action Items
+    { width: '7%',  targets: 7 },  // Status
+    { width: '10%', targets: 8 },  // added_by
+    { width: '10%', targets: 9 }   // Actions
+  ],
+  order: [[0, 'desc']],
+  stateSave: true
+});
+
+  });
+</script>
+{% endblock %}

@@ -1,7 +1,24 @@
-venv/
+# Python cache and environment
 __pycache__/
 *.pyc
 *.pyo
-*.db
-.env
+*.pyd
+.Python
 
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Database and dumps
+*.db
+*.sql
+pgdata/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# VS Code / MacOS
+.vscode/
+.DS_Store
